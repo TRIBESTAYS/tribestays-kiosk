@@ -17,8 +17,12 @@ export function Nav({ events, active, onDot, progressRef }) {
       <div className="h-[3px] overflow-hidden rounded-full bg-white/10">
         <div
           ref={progressRef}
-          className="h-full origin-left scale-x-0"
-          style={{ background: `linear-gradient(90deg, ${a.colors[0]}, ${a.colors[1]})` }}
+          className="h-full origin-left"
+          style={{ 
+            transform: 'scaleX(0)',
+            background: `linear-gradient(90deg, ${a.colors[0]}, 
+            ${a.colors[1]})` 
+          }}
         />
       </div>
     </nav>

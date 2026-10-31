@@ -16,8 +16,7 @@ const createState = () => ({
   startPos: 0,
   downCard: -1,
   samples: [],
-  pausedUntil: 0,
-  lastAdvance: 0,
+  nextAt: 0, // timestamp of the next automatic slide
   active: 0,
   snapTimer: 0,
   cards: [],
@@ -36,9 +35,9 @@ export function useCarousel(opts) {
   const [s] = useState(createState);
   const [active, setActive] = useState(0);
 
+  // Any touch pushes the next automatic slide back to resumeAfterMs from now
   const interact = useCallback(() => {
-    s.pausedUntil = performance.now() + optsRef.current.resumeAfterMs;
-    s.lastAdvance = s.pausedUntil;
+    s.nextAt = performance.now() + optsRef.current.resumeAfterMs;
   }, [s]);
 
   useEffect(() => {
@@ -109,28 +108,36 @@ export function useCarousel(opts) {
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(stage);
-    s.lastAdvance = performance.now();
+    s.nextAt = performance.now() + optsRef.current.autoAdvanceMs;
 
     let raf = 0;
     let last = performance.now();
     const tick = (t) => {
       const o = optsRef.current;
-      const dt = Math.min(64, t - last);
+      const dt = clamp(t - last, 0, 64);
       last = t;
+
+      if (s.dragging || o.paused) {
+        // Hold the timer while someone is touching or registering
+        s.nextAt = Math.max(s.nextAt, t + o.resumeAfterMs);
+      } else if (t >= s.nextAt) {
+        s.target = Math.round(s.target) + 1;
+        s.nextAt = t + o.autoAdvanceMs;
+      }
+
       if (!s.dragging) {
-        if (!o.paused && t > s.pausedUntil && t - s.lastAdvance > o.autoAdvanceMs) {
-          s.target = Math.round(s.target) + 1;
-          s.lastAdvance = t;
-        }
         const diff = s.target - s.pos;
         // Frame-rate independent easing (same feel at 60Hz and 120Hz)
         s.pos = Math.abs(diff) < 0.0005 ? s.target : s.pos + diff * (1 - Math.pow(0.88, dt / 16.67));
       }
+
+      // Bar fills during the last autoAdvanceMs before the next slide
       const bar = progressRef.current;
       if (bar) {
-        const p = o.paused || t < s.pausedUntil ? 0 : clamp((t - s.lastAdvance) / o.autoAdvanceMs, 0, 1);
+        const p = o.paused ? 0 : clamp(1 - (s.nextAt - t) / o.autoAdvanceMs, 0, 1);
         bar.style.transform = `scaleX(${p})`;
       }
+
       if (s.pos !== s.rendered) {
         render();
         s.rendered = s.pos;
@@ -208,6 +215,14 @@ export function useCarousel(opts) {
     else goTo(s.downCard);
   }, [s, interact, goTo]);
 
+  // If the browser takes the pointer away (e.g. Android starts a scroll), treat it as a release
+  const onLostPointerCapture = useCallback(() => {
+    if (!s.dragging) return;
+    s.dragging = false;
+    s.target = Math.round(s.pos);
+    interact();
+  }, [s, interact]);
+
   const onWheel = useCallback(
     (e) => {
       interact();
@@ -236,6 +251,13 @@ export function useCarousel(opts) {
     interact,
     shift,
     goTo: goToAndPause,
-    bind: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp, onWheel },
+    bind: {
+      onPointerDown,
+      onPointerMove,
+      onPointerUp,
+      onPointerCancel: onPointerUp,
+      onLostPointerCapture,
+      onWheel,
+    },
   };
 }

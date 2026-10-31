@@ -2,7 +2,7 @@ export const CONFIG = {
   registerUrl: import.meta.env.VITE_REGISTER_URL || 'https://tribestays.com/events/register',
   apiBase: import.meta.env.VITE_API_BASE || null,
   autoAdvanceMs: 4500,  // time each card stays in focus while auto-scrolling
-  resumeAfterMs: 9000,  // auto-scroll resumes this long after the last touch
+  resumeAfterMs: 5500,  // auto-scroll resumes this long after the last touch
   idleResetMs: 45000,   // an open registration panel closes after this much inactivity
   successCloseMs: 8000, // success screen auto-closes after this
 };
