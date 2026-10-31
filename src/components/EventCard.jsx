@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { cardVars, shortDate } from '../data';
 import { ArrowIcon, CalendarIcon, ClockIcon, PinIcon } from './icons';
 
@@ -14,7 +14,8 @@ function Detail({ icon, children }) {
 }
 
 // variant: 'full' (vertical — all details + button) | 'poster' (horizontal — photo + title)
-export function EventCard({ e, index, variant, active, onRegister }) {
+// memo: only the cards whose `active` flips re-render when the carousel moves
+export const EventCard = memo(function EventCard({ e, index, variant, active, onRegister }) {
   const [broken, setBroken] = useState(false);
   const full = variant === 'full';
 
@@ -27,7 +28,7 @@ export function EventCard({ e, index, variant, active, onRegister }) {
       <div className="relative flex h-full flex-col overflow-hidden rounded-[calc(1.6rem-3px)] bg-card">
         <div className="relative min-h-[30%] flex-1 overflow-hidden">
           <div className={`absolute inset-0 grid place-items-center bg-linear-to-br from-(--c1) to-(--c2) ${e.art === 'checker' ? 'art-checker' : ''}`}>
-            <span className="text-[4.5rem] drop-shadow-lg">{e.emoji}</span>
+            <span className="text-[4.5rem]">{e.emoji}</span>
           </div>
           {e.image && !broken && (
             <img
@@ -63,7 +64,7 @@ export function EventCard({ e, index, variant, active, onRegister }) {
                 type="button"
                 tabIndex={active ? 0 : -1}
                 onClick={(ev) => {
-                  if (ev.detail === 0) onRegister();
+                  if (ev.detail === 0) onRegister(index);
                 }}
                 className="btn-pop mt-5 h-[3.4rem] text-[1.2rem]"
               >
@@ -72,9 +73,7 @@ export function EventCard({ e, index, variant, active, onRegister }) {
             </>
           )}
         </div>
-
-        <div data-dim className="pointer-events-none absolute inset-0 bg-ink opacity-0" />
       </div>
     </article>
   );
-}
+});

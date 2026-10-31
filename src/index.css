@@ -49,17 +49,12 @@
     position: absolute; left: 50%; top: 50%;
     padding: 3px; border-radius: 1.6rem;
     background: linear-gradient(150deg, var(--c1), var(--c2));
-    box-shadow: 0 1.2rem 2.4rem -0.8rem rgb(0 0 0 / .55);
+    /* Small, static shadow: big blurred shadows inflate each card's GPU layer */
+    box-shadow: 0 .8rem 1.6rem -0.6rem rgb(0 0 0 / .5);
     will-change: transform, opacity;
     backface-visibility: hidden;
+    contain: layout style;
   }
-  /* Glow is a static layer that only fades in/out when a card becomes active */
-  .card::before {
-    content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
-    box-shadow: 0 1.5rem 4rem -0.5rem color-mix(in srgb, var(--c1) 60%, transparent);
-    opacity: 0; transition: opacity .5s ease;
-  }
-  .card.is-active::before { opacity: 1; }
   .card-full {
     width: min(80cqw, 31rem);
     height: min(40rem, calc(100cqh - 2.5rem), calc(min(80cqw, 31rem) * 1.6));

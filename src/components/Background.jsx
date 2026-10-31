@@ -1,19 +1,15 @@
-export function Background({ events, active }) {
+// Static backdrop: painted once, never animated (full-screen repaints are what lag on Android)
+export function Background() {
   return (
-    <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10">
-      {events.map((e, i) => (
-        <div
-          key={e.id}
-          className="absolute inset-0 transition-opacity duration-1000 ease-out"
-          style={{
-            opacity: i === active ? 1 : 0,
-            background: `radial-gradient(70% 45% at 10% 5%, ${e.colors[0]}73, transparent 70%),
-                         radial-gradient(70% 50% at 100% 55%, ${e.colors[1]}61, transparent 70%),
-                         radial-gradient(60% 40% at 25% 105%, #FF431E40, transparent 70%)`,
-          }}
-        />
-      ))}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,transparent,rgb(14_11_20/.65)_75%)]" />
-    </div>
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 -z-10"
+      style={{
+        background: `radial-gradient(circle at 50% 45%, transparent, rgb(14 11 20 / .65) 75%),
+                     radial-gradient(70% 45% at 10% 5%, #FF431E59, transparent 70%),
+                     radial-gradient(70% 50% at 100% 55%, #0A7CC14D, transparent 70%),
+                     radial-gradient(60% 40% at 25% 105%, #307C5F4D, transparent 70%)`,
+      }}
+    />
   );
 }

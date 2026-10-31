@@ -33,22 +33,24 @@ export function useCarousel(opts) {
   useLayoutEffect(() => {
     optsRef.current = opts;
   });
-  const [s] = useState(createState);
+  // Mutable animation state lives in a ref: it changes every frame and must never trigger a render
+  const stateRef = useRef(null);
+  if (stateRef.current === null) stateRef.current = createState();
   const [active, setActive] = useState(0);
 
   // Any touch pushes the next automatic slide back to resumeAfterMs from now
   const interact = useCallback(() => {
-    s.nextAt = performance.now() + optsRef.current.resumeAfterMs;
-  }, [s]);
+    stateRef.current.nextAt = performance.now() + optsRef.current.resumeAfterMs;
+  }, []);
 
   useEffect(() => {
+    const s = stateRef.current;
     const stage = stageRef.current;
     if (!stage) return;
     const mode = opts.mode;
     const n = opts.count;
     s.cards = Array.from(stage.querySelectorAll('[data-card]')).map((el) => ({
       el,
-      dim: el.querySelector('[data-dim]'),
       z: -1,
       visible: true,
     }));
@@ -67,7 +69,9 @@ export function useCarousel(opts) {
       s.rendered = Number.NaN;
     };
 
-    // Only transform + opacity change per frame (GPU-composited, cheap on Android)
+    // Only each card's own transform + opacity change per frame. Both are handled by the
+    // GPU compositor, so the card is never repainted while it moves. (Changing anything
+    // *inside* a card per frame would force a full repaint of it — the old cause of lag.)
     const render = () => {
       s.cards.forEach((c, i) => {
         let d = mod(i - s.pos, n);
@@ -75,19 +79,15 @@ export function useCarousel(opts) {
         const ad = Math.abs(d);
         let transform;
         let opacity;
-        let dim;
         if (mode === 'wheel') {
           transform = `translate(-50%, -50%) translateY(${s.radius}px) rotate(${d * s.step}deg) translateY(${-s.radius}px) scale(${1 - Math.min(ad, 2) * 0.14})`;
-          opacity = ad > 2.2 ? 0 : clamp(1.25 - ad * 0.45, 0, 1);
-          dim = clamp(ad * 0.5, 0, 0.8);
+          opacity = ad > 2.2 ? 0 : clamp(1 - ad * 0.45, 0, 1);
         } else {
           transform = `translate(-50%, -50%) translate3d(${d * s.spacing}px, 0, ${-ad * s.spacing * 0.55}px) rotateY(${-clamp(d, -1, 1) * 34}deg) scale(${1 - Math.min(ad, 3) * 0.06})`;
-          opacity = ad > 2.7 ? 0 : clamp(1.35 - ad * 0.3, 0, 1);
-          dim = clamp(ad * 0.45, 0, 0.75);
+          opacity = ad > 2.7 ? 0 : clamp(1 - ad * 0.35, 0, 1);
         }
         c.el.style.transform = transform;
         c.el.style.opacity = String(opacity);
-        if (c.dim) c.dim.style.opacity = String(dim);
         const z = 100 - Math.round(ad * 10);
         if (z !== c.z) {
           c.el.style.zIndex = String(z);
@@ -151,28 +151,31 @@ export function useCarousel(opts) {
       cancelAnimationFrame(raf);
       ro.disconnect();
     };
-  }, [opts.mode, opts.count, s]);
+  }, [opts.mode, opts.count]);
 
   const goTo = useCallback(
     (i) => {
+      const s = stateRef.current;
       const n = optsRef.current.count;
       let d = mod(i - Math.round(s.target), n);
       if (d > n / 2) d -= n;
       s.target = Math.round(s.target) + d;
     },
-    [s],
+    [],
   );
 
   const shift = useCallback(
     (delta) => {
+      const s = stateRef.current;
       interact();
       s.target = Math.round(s.target) + delta;
     },
-    [s, interact],
+    [interact],
   );
 
   const onPointerDown = useCallback(
     (e) => {
+      const s = stateRef.current;
       s.dragging = true;
       s.moved = false;
       s.startX = e.clientX;
@@ -184,11 +187,12 @@ export function useCarousel(opts) {
       e.currentTarget.setPointerCapture(e.pointerId);
       interact();
     },
-    [s, interact],
+    [interact],
   );
 
   const onPointerMove = useCallback(
     (e) => {
+      const s = stateRef.current;
       if (!s.dragging) return;
       const dx = e.clientX - s.startX;
       if (Math.abs(dx) > 10) s.moved = true;
@@ -197,10 +201,11 @@ export function useCarousel(opts) {
       s.samples.push({ x: e.clientX, t: performance.now() });
       if (s.samples.length > 6) s.samples.shift();
     },
-    [s],
+    [],
   );
 
   const onPointerUp = useCallback(() => {
+    const s = stateRef.current;
     if (!s.dragging) return;
     s.dragging = false;
     interact();
@@ -215,26 +220,29 @@ export function useCarousel(opts) {
     if (s.downCard < 0) return;
     if (s.downCard === s.active && Math.abs(s.pos - Math.round(s.pos)) < 0.2) s.tapCard = s.downCard;
     else goTo(s.downCard);
-  }, [s, interact, goTo]);
+  }, [interact, goTo]);
 
   // Opening here (not on pointerup) means the tap's own click can't land on the new sheet's backdrop
   const onClick = useCallback(() => {
+    const s = stateRef.current;
     if (s.tapCard < 0) return;
     const i = s.tapCard;
     s.tapCard = -1;
     optsRef.current.onOpen(i);
-  }, [s]);
+  }, []);
 
   // If the browser takes the pointer away (e.g. Android starts a scroll), treat it as a release
   const onLostPointerCapture = useCallback(() => {
+    const s = stateRef.current;
     if (!s.dragging) return;
     s.dragging = false;
     s.target = Math.round(s.pos);
     interact();
-  }, [s, interact]);
+  }, [interact]);
 
   const onWheel = useCallback(
     (e) => {
+      const s = stateRef.current;
       interact();
       const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
       s.target += d / s.spacing;
@@ -243,7 +251,7 @@ export function useCarousel(opts) {
         s.target = Math.round(s.target);
       }, 140);
     },
-    [s, interact],
+    [interact],
   );
 
   const goToAndPause = useCallback(

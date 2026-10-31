@@ -74,7 +74,7 @@ export default function App() {
           index={i}
           variant={portrait ? 'full' : 'poster'}
           active={i === active}
-          onRegister={() => open(i)}
+          onRegister={open}
         />
       ))}
     </div>
@@ -86,7 +86,7 @@ export default function App() {
     <>
       {portrait ? (
         <main className="portrait-frame relative isolate mx-auto flex h-dvh flex-col overflow-hidden bg-ink">
-          <Background events={events} active={active} />
+          <Background />
           <Header showQr={false} />
           <section className="px-[5%] pt-[2.5dvh] [@media(max-height:640px)]:hidden">
             <h1 className="font-display text-[3.1rem] font-extrabold leading-[0.95] tracking-[-0.035em]">
@@ -105,7 +105,7 @@ export default function App() {
         </main>
       ) : (
         <main className="relative isolate grid h-dvh w-full grid-cols-[minmax(0,40%)_minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden bg-ink">
-          <Background events={events} active={active} />
+          <Background />
           <div className="col-span-2">
             <Header
               showQr={!isPhone}
