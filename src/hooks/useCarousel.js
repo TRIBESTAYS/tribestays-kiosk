@@ -15,6 +15,7 @@ const createState = () => ({
   startX: 0,
   startPos: 0,
   downCard: -1,
+  tapCard: -1,
   samples: [],
   nextAt: 0, // timestamp of the next automatic slide
   active: 0,
@@ -179,6 +180,7 @@ export function useCarousel(opts) {
       const card = e.target.closest('[data-card]');
       s.downCard = card ? Number(card.dataset.card) : -1;
       s.samples = [{ x: e.clientX, t: performance.now() }];
+      s.tapCard = -1;
       e.currentTarget.setPointerCapture(e.pointerId);
       interact();
     },
@@ -209,11 +211,19 @@ export function useCarousel(opts) {
       s.target = Math.round(s.pos + clamp((-v * 260) / s.spacing, -3, 3));
       return;
     }
-    // A tap: side card → bring it to focus; focused card → register
+    // A tap: side card → bring it to focus; focused card → open on the click that follows
     if (s.downCard < 0) return;
-    if (s.downCard === s.active && Math.abs(s.pos - Math.round(s.pos)) < 0.2) optsRef.current.onOpen(s.downCard);
+    if (s.downCard === s.active && Math.abs(s.pos - Math.round(s.pos)) < 0.2) s.tapCard = s.downCard;
     else goTo(s.downCard);
   }, [s, interact, goTo]);
+
+  // Opening here (not on pointerup) means the tap's own click can't land on the new sheet's backdrop
+  const onClick = useCallback(() => {
+    if (s.tapCard < 0) return;
+    const i = s.tapCard;
+    s.tapCard = -1;
+    optsRef.current.onOpen(i);
+  }, [s]);
 
   // If the browser takes the pointer away (e.g. Android starts a scroll), treat it as a release
   const onLostPointerCapture = useCallback(() => {
@@ -257,6 +267,7 @@ export function useCarousel(opts) {
       onPointerUp,
       onPointerCancel: onPointerUp,
       onLostPointerCapture,
+      onClick,
       onWheel,
     },
   };

@@ -18,6 +18,7 @@ export function RegisterSheet({ event: ev, layout, isPhone, confettiRef, onClose
   const [shake, setShake] = useState(0);
   const closing = useRef(false);
   const alive = useRef(true);
+  const openedAt = useRef(0);
 
   const portrait = layout === 'portrait';
   const url = `${CONFIG.registerUrl}?event=${encodeURIComponent(ev.id)}`;
@@ -25,6 +26,7 @@ export function RegisterSheet({ event: ev, layout, isPhone, confettiRef, onClose
   // Slide in on mount
   useEffect(() => {
     alive.current = true;
+    openedAt.current = performance.now();
     const id = requestAnimationFrame(() => setShown(true));
     return () => {
       alive.current = false;
@@ -321,7 +323,10 @@ export function RegisterSheet({ event: ev, layout, isPhone, confettiRef, onClose
   return (
     <div className={`fixed inset-0 z-50 grid ${portrait ? 'items-end' : 'place-items-center'}`} style={cardVars(ev)}>
       <div
-        onClick={close}
+        onClick={() => {
+          // Ignore the tap that opened the sheet landing on the backdrop
+          if (performance.now() - openedAt.current > 400) close();
+        }}
         className={`absolute inset-0 bg-[#08060c]/75 transition-opacity duration-300 ${shown ? 'opacity-100' : 'opacity-0'}`}
       />
       <div
